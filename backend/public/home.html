@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Vinnoflow</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    /* ══════════════════════════════════════════════
+       CLOUD SETUP MODAL — Professional polish
+       ══════════════════════════════════════════════ */
+    .csm-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 5, 12, 0.78);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      animation: csm-fade-in 0.2s ease-out;
+    }
+    .csm-backdrop.open { display: flex; }
+
+    @keyframes csm-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes csm-slide-up {
+      from { opacity: 0; transform: translateY(20px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .csm-card {
+      background: linear-gradient(180deg, #12141c 0%, #0e1017 100%);
+      border: 1px solid #1e2230;
+      border-radius: 16px;
+      padding: 1.75rem 1.5rem;
+      width: 100%;
+      max-width: 520px;
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6),
+                  0 0 0 1px rgba(59, 130, 246, 0.06);
+      animation: csm-slide-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .csm-card::-webkit-scrollbar { width: 6px; }
+    .csm-card::-webkit-scrollbar-track { background: transparent; }
+    .csm-card::-webkit-scrollbar-thumb { background: #21262d; border-radius: 3px; }
+    .csm-card::-webkit-scrollbar-thumb:hover { background: #2d3341; }
+
+    .csm-header {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      margin-bottom: 0.4rem;
+    }
+    .csm-icon-wrap {
+      width: 42px; height: 42px; border-radius: 10px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05));
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      display: flex; align-items: center; justify-content: center;
+      color: #60a5fa; font-size: 1.15rem; flex-shrink: 0;
+    }
+    .csm-title { font-size: 1.1rem; font-weight: 700; color: #e6edf3; letter-spacing: -0.2px; }
+    .csm-close {
+      margin-left: auto; background: transparent; border: none;
+      color: #6b7280; width: 30px; height: 30px; border-radius: 8px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; font-size: 0.95rem;
+    }
+    .csm-close:hover { background: #1a1e2a; color: #e6edf3; }
+
+    .csm-sub {
+      font-size: 0.83rem; color: #8b949e;
+      line-height: 1.55; margin-bottom: 1.5rem;
+    }
+    .csm-sub a { color: #60a5fa; text-decoration: none; font-weight: 500; }
+    .csm-sub a:hover { text-decoration: underline; }
+
+    .csm-alert {
+      display: none;
+      padding: 0.7rem 0.95rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      margin-bottom: 1rem;
+      line-height: 1.4;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .csm-alert.show { display: flex; }
+    .csm-alert.err { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; }
+    .csm-alert.ok  { background: rgba(34, 197, 94, 0.1);  border: 1px solid rgba(34, 197, 94, 0.3);  color: #4ade80; }
+    .csm-alert.info{ background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: #60a5fa; }
+
+    .csm-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.75rem; margin-bottom: 0.75rem;
+    }
+    .csm-field { display: flex; flex-direction: column; }
+    .csm-field.full { grid-column: 1 / -1; }
+    .csm-label {
+      font-size: 0.72rem; color: #8b949e; font-weight: 500;
+      margin-bottom: 0.35rem; letter-spacing: 0.2px;
+      text-transform: uppercase;
+    }
+    .csm-input {
+      background: #0a0c12; border: 1px solid #1e2230;
+      border-radius: 8px; color: #e6edf3;
+      padding: 0.68rem 0.85rem; font-size: 0.86rem;
+      outline: none; transition: all 0.15s;
+      font-family: inherit; box-sizing: border-box; width: 100%;
+    }
+    .csm-input:hover { border-color: #2d3341; }
+    .csm-input:focus {
+      border-color: #3b82f6; background: #0d1017;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .csm-input::placeholder { color: #484f58; }
+    .csm-input:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .csm-actions {
+      display: flex; gap: 0.6rem; margin-top: 1.25rem;
+    }
+    .csm-btn {
+      padding: 0.75rem 1rem; border: none; border-radius: 8px;
+      font-size: 0.86rem; font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 0.5rem; transition: all 0.15s;
+      font-family: inherit; min-height: 42px;
+    }
+    .csm-btn:disabled { opacity: 0.65; cursor: not-allowed; }
+    .csm-btn-secondary {
+      flex: 1; background: #171a24; border: 1px solid #21262d; color: #e6edf3;
+    }
+    .csm-btn-secondary:hover:not(:disabled) { background: #1e2230; border-color: #2d3341; }
+    .csm-btn-primary {
+      flex: 2; background: linear-gradient(180deg, #3b82f6, #2563eb); color: #fff;
+      box-shadow: 0 1px 0 rgba(255,255,255,.1) inset, 0 2px 8px rgba(59,130,246,.3);
+    }
+    .csm-btn-primary:hover:not(:disabled) {
+      background: linear-gradient(180deg, #4a90f7, #3b82f6);
+      box-shadow: 0 1px 0 rgba(255,255,255,.15) inset, 0 4px 14px rgba(59,130,246,.45);
+    }
+    .csm-btn-primary:active:not(:disabled) { transform: translateY(1px); }
+
+    .csm-spin {
+      width: 15px; height: 15px;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      border-top-color: #fff; border-radius: 50%;
+      animation: csm-spin 0.7s linear infinite; flex-shrink: 0;
+    }
+    @keyframes csm-spin { to { transform: rotate(360deg); } }
+
+    .csm-progress {
+      display: none;
+      padding: 1rem 1.1rem;
+      background: rgba(59, 130, 246, 0.06);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 10px; margin-top: 1rem;
+    }
+    .csm-progress.show { display: block; animation: csm-fade-in 0.25s; }
+    .csm-progress-row {
+      display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.5rem;
+    }
+    .csm-progress-row:last-child { margin-bottom: 0; }
+    .csm-step-icon {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; flex-shrink: 0;
+    }
+    .csm-step-icon.done    { background: rgba(34,197,94,0.18); color: #4ade80; }
+    .csm-step-icon.active  { background: rgba(59,130,246,0.2); color: #60a5fa; }
+    .csm-step-icon.pending { background: #1a1e2a; color: #484f58; }
+    .csm-step-text { font-size: 0.83rem; color: #e6edf3; flex: 1; }
+    .csm-step-text.pending { color: #6b7280; }
+    .csm-timer {
+      font-size: 0.75rem; color: #8b949e;
+      font-variant-numeric: tabular-nums;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+    }
+
+    .csm-hint {
+      display: flex; align-items: flex-start; gap: 0.5rem;
+      padding: 0.7rem 0.85rem;
+      background: rgba(245, 158, 11, 0.06);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 8px; margin-bottom: 1rem;
+      font-size: 0.78rem; color: #fbbf24; line-height: 1.5;
+    }
+    .csm-hint i { margin-top: 2px; flex-shrink: 0; }
+
+    @media (max-width: 520px) {
+      .csm-card { padding: 1.4rem 1.15rem; border-radius: 14px; }
+      .csm-row { grid-template-columns: 1fr; gap: 0.6rem; }
+      .csm-btn { font-size: 0.83rem; padding: 0.7rem 0.9rem; }
+      .csm-title { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="hdr">
+    <div class="ls">
+      <div class="mt" onclick="toggleSidebar()"><i class="fas fa-bars"></i></div>
+      <div class="lt">
+        <div class="lt-icon"><i class="fas fa-bolt"></i></div>
+        Vinnoflow
+      </div>
+    </div>
+    <div class="ha">
+      <a href="/profile" class="ib" title="Profile & Settings"><i class="fas fa-user-cog"></i></a>
+      <a href="/" class="ib" title="Home"><i class="fas fa-home"></i></a>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="sb" id="sidebar">
+    <span class="cs" onclick="toggleSidebar()"><i class="fas fa-times"></i></span>
+
+    <a href="/profile" class="up" style="text-decoration:none;color:inherit;cursor:pointer">
+      <div class="up-av">{{AVATAR}}</div>
+      <div>
+        <h3>{{DISPLAY_NAME}}</h3>
+        <p>{{EMAIL}}</p>
+      </div>
+    </a>
+
+    <div class="nt">Navigation</div>
+    <a href="/" class="ni ac">
+      <i class="fas fa-home"></i><span>Dashboard</span>
+      <span class="ni-dot"></span>
+    </a>
+    <a href="/cloud" class="ni"><i class="fas fa-cloud"></i><span>Cloud Storage</span></a>
+
+    <div class="nt">Account</div>
+    <a href="/profile" class="ni"><i class="fas fa-user-cog"></i><span>Profile & Settings</span></a>
+
+    <div class="nt">System</div>
+    <a href="/logout" class="ni"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
+  </aside>
+
+  <!-- Main -->
+  <main class="mc">
+    <div class="page-header">
+      <h1>Welcome back, {{DISPLAY_NAME}}</h1>
+      <p>Here's your NexPanel overview.</p>
+    </div>
+
+    <div class="cards-grid">
+      <a href="/cloud" class="card">
+        <div class="card-icon"><i class="fas fa-cloud"></i></div>
+        <div>
+          <div class="card-title">Cloud Storage</div>
+          <div class="card-desc">Manage files and folders stored securely via Telegram.</div>
+        </div>
+        <div class="card-tag active"><i class="fas fa-circle" style="font-size:7px"></i> Active</div>
+      </a>
+
+      <div class="card soon">
+        <div class="card-icon amber"><i class="fas fa-robot"></i></div>
+        <div>
+          <div class="card-title">Bot Templates</div>
+          <div class="card-desc">Deploy pre-configured Telegram bots in seconds.</div>
+        </div>
+        <div class="card-tag soon">Coming Soon</div>
+      </div>
+
+      <div class="card soon">
+        <div class="card-icon amber"><i class="fas fa-bolt"></i></div>
+        <div>
+          <div class="card-title">Automation Flows</div>
+          <div class="card-desc">Connect apps and automate repetitive tasks visually.</div>
+        </div>
+        <div class="card-tag soon">Coming Soon</div>
+      </div>
+
+      <div class="card soon">
+        <div class="card-icon amber"><i class="fas fa-lock"></i></div>
+        <div>
+          <div class="card-title">Credential Vault</div>
+          <div class="card-desc">Securely store API keys and sensitive credentials.</div>
+        </div>
+        <div class="card-tag soon">Coming Soon</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const sidebarEl = document.getElementById("sidebar");
+    function toggleSidebar() { sidebarEl.classList.toggle("open"); }
+    document.addEventListener("click", (e) => {
+      if (!sidebarEl.contains(e.target) && !e.target.closest(".mt") && sidebarEl.classList.contains("open"))
+        sidebarEl.classList.remove("open");
+    });
+  </script>
+
+  <!-- ══════════════════════════════════════════════
+       CLOUD STORAGE SETUP MODAL
+       ══════════════════════════════════════════════ -->
+  <div id="csmModal" class="csm-backdrop" onclick="csmBackdropClick(event)">
+    <div class="csm-card" onclick="event.stopPropagation()">
+
+      <div class="csm-header">
+        <div class="csm-icon-wrap"><i class="fas fa-cloud"></i></div>
+        <div class="csm-title" id="csmTitle">Connect Cloud Storage</div>
+        <button class="csm-close" onclick="csmClose()" aria-label="Close"><i class="fas fa-times"></i></button>
+      </div>
+
+      <div class="csm-sub" id="csmSub">
+        Configure Telegram credentials to enable cloud storage. Get your
+        <strong>API ID</strong> and <strong>API Hash</strong> from
+        <a href="https://my.telegram.org" target="_blank" rel="noopener">my.telegram.org</a>.
+      </div>
+
+      <div class="csm-hint">
+        <i class="fas fa-info-circle"></i>
+        <span>Connecting may take <strong>15–40 seconds</strong> as we establish a secure MTProto session with Telegram.</span>
+      </div>
+
+      <div id="csmAlert" class="csm-alert"></div>
+
+      <!-- Form fields -->
+      <div id="csmForm">
+        <div class="csm-row">
+          <div class="csm-field">
+            <label class="csm-label">API ID</label>
+            <input id="cm-apiid" class="csm-input" type="text" placeholder="12345678" autocomplete="off"/>
+          </div>
+          <div class="csm-field">
+            <label class="csm-label">API Hash</label>
+            <input id="cm-apihash" class="csm-input" type="text" placeholder="abc123def456..." autocomplete="off"/>
+          </div>
+        </div>
+
+        <div class="csm-field" style="margin-bottom:0.75rem">
+          <label class="csm-label">Bot Token</label>
+          <input id="cm-token" class="csm-input" type="text" placeholder="123456:ABCdef..." autocomplete="off"/>
+        </div>
+
+        <div class="csm-row">
+          <div class="csm-field">
+            <label class="csm-label">DB Channel ID</label>
+            <input id="cm-channel" class="csm-input" type="text" placeholder="-100xxxxxxxxxx" autocomplete="off"/>
+          </div>
+          <div class="csm-field">
+            <label class="csm-label">Owner Telegram ID</label>
+            <input id="cm-owner" class="csm-input" type="text" placeholder="123456789" autocomplete="off"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress panel -->
+      <div id="csmProgress" class="csm-progress">
+        <div class="csm-progress-row">
+          <div class="csm-step-icon" id="step1Icon">
+            <i class="fas fa-check" style="display:none"></i>
+            <div class="csm-spin" id="step1Spin" style="display:none"></div>
+            <span id="step1Num">1</span>
+          </div>
+          <div class="csm-step-text" id="step1Text">Saving credentials…</div>
+          <div class="csm-timer" id="step1Timer"></div>
+        </div>
+        <div class="csm-progress-row">
+          <div class="csm-step-icon pending" id="step2Icon">
+            <i class="fas fa-check" style="display:none"></i>
+            <div class="csm-spin" id="step2Spin" style="display:none"></div>
+            <span id="step2Num">2</span>
+          </div>
+          <div class="csm-step-text pending" id="step2Text">Connecting to Telegram…</div>
+          <div class="csm-timer" id="step2Timer"></div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="csm-actions">
+        <button id="csmCancel" class="csm-btn csm-btn-secondary" onclick="csmClose()">Cancel</button>
+        <button id="csmSubmit" class="csm-btn csm-btn-primary" onclick="csmSubmit()">
+          <i class="fas fa-plug"></i>
+          <span>Save & Connect</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+  // ══════════════════════════════════════════════════════════
+  // CLOUD CARD INTERCEPT
+  // ══════════════════════════════════════════════════════════
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll('a[href="/cloud"]').forEach(card => {
+      card.addEventListener("click", async (e) => {
+        e.preventDefault();
+        try {
+          const res  = await fetch("/cloud/setup-status");
+          const data = await res.json();
+
+          if (data.configured && data.connected) {
+            // Fully setup + connected → go directly
+            window.location.href = "/cloud";
+          } else if (data.configured && !data.connected) {
+            // Credentials saved but MTProto not connected — auto-reconnect
+            csmOpen();
+            document.getElementById('csmTitle').textContent = 'Reconnecting Cloud Storage';
+            document.getElementById('csmSub').innerHTML =
+              'Your credentials are saved. Reconnecting to Telegram now — this may take a few seconds.';
+
+            // Pre-fill fields from DB
+            try {
+              const credsRes = await fetch('/profile/get-telegram-creds');
+              const creds = await credsRes.json();
+              if (creds.ok) {
+                document.getElementById('cm-apiid').value    = creds.apiId    || '';
+                document.getElementById('cm-apihash').value  = creds.apiHash  || '';
+                document.getElementById('cm-token').value    = creds.botToken || '';
+                document.getElementById('cm-channel').value  = creds.dbChannelId || '';
+                document.getElementById('cm-owner').value    = creds.ownerId  || '';
+              }
+            } catch {}
+
+            // Auto-trigger reconnect (skip save step)
+            setTimeout(() => csmReconnectOnly(), 400);
+          } else {
+            // Nothing configured → fresh setup
+            csmOpen();
+          }
+        } catch {
+          window.location.href = "/cloud";
+        }
+      });
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // MODAL CONTROL
+  // ══════════════════════════════════════════════════════════
+  let csmConnecting = false;
+  let csmTimers     = { step1: null, step2: null };
+
+  function csmOpen() {
+    document.getElementById("csmModal").classList.add("open");
+    document.body.style.overflow = "hidden";
+    setTimeout(() => document.getElementById("cm-apiid")?.focus(), 100);
+  }
+
+  function csmClose() {
+    if (csmConnecting) return;
+    document.getElementById("csmModal").classList.remove("open");
+    document.body.style.overflow = "";
+    csmReset();
+  }
+
+  function csmBackdropClick(e) {
+    if (e.target.id === "csmModal" && !csmConnecting) csmClose();
+  }
+
+  function csmReset() {
+    csmHideAlert();
+    document.getElementById("csmProgress").classList.remove("show");
+    document.getElementById("csmForm").style.display = "";
+    document.getElementById('csmTitle').textContent = 'Connect Cloud Storage';
+    document.getElementById('csmSub').innerHTML =
+      'Configure Telegram credentials to enable cloud storage. Get your <strong>API ID</strong> and <strong>API Hash</strong> from <a href="https://my.telegram.org" target="_blank" rel="noopener">my.telegram.org</a>.';
+    csmResetSteps();
+    csmSetButton(false, '<i class="fas fa-plug"></i><span>Save & Connect</span>');
+    document.getElementById("csmCancel").disabled = false;
+  }
+
+  function csmResetSteps() {
+    ['1', '2'].forEach(n => {
+      const icon  = document.getElementById(`step${n}Icon`);
+      const text  = document.getElementById(`step${n}Text`);
+      const timer = document.getElementById(`step${n}Timer`);
+      const num   = document.getElementById(`step${n}Num`);
+      const chk   = icon.querySelector('.fa-check');
+      const spin  = document.getElementById(`step${n}Spin`);
+      icon.className = 'csm-step-icon pending';
+      icon.style.background = '';
+      icon.style.color = '';
+      text.className = 'csm-step-text pending';
+      text.textContent = n === '1' ? 'Saving credentials…' : 'Connecting to Telegram…';
+      timer.textContent = '';
+      num.style.display = '';
+      chk.style.display = 'none';
+      spin.style.display = 'none';
+    });
+    Object.values(csmTimers).forEach(t => t && clearInterval(t));
+    csmTimers = { step1: null, step2: null };
+  }
+
+  function csmStepStart(n) {
+    const icon  = document.getElementById(`step${n}Icon`);
+    const text  = document.getElementById(`step${n}Text`);
+    const timer = document.getElementById(`step${n}Timer`);
+    const num   = document.getElementById(`step${n}Num`);
+    const spin  = document.getElementById(`step${n}Spin`);
+    icon.className = 'csm-step-icon active';
+    text.className = 'csm-step-text';
+    num.style.display = 'none';
+    spin.style.display = 'block';
+    const start = Date.now();
+    csmTimers[`step${n}`] = setInterval(() => {
+      const sec = ((Date.now() - start) / 1000).toFixed(1);
+      timer.textContent = `${sec}s`;
+    }, 100);
+  }
+
+  function csmStepDone(n) {
+    const icon  = document.getElementById(`step${n}Icon`);
+    const num   = document.getElementById(`step${n}Num`);
+    const spin  = document.getElementById(`step${n}Spin`);
+    const chk   = icon.querySelector('.fa-check');
+    icon.className = 'csm-step-icon done';
+    num.style.display = 'none';
+    spin.style.display = 'none';
+    chk.style.display = 'block';
+    if (csmTimers[`step${n}`]) { clearInterval(csmTimers[`step${n}`]); csmTimers[`step${n}`] = null; }
+  }
+
+  function csmStepFail(n, errMsg) {
+    const icon  = document.getElementById(`step${n}Icon`);
+    const text  = document.getElementById(`step${n}Text`);
+    const num   = document.getElementById(`step${n}Num`);
+    const spin  = document.getElementById(`step${n}Spin`);
+    icon.className = 'csm-step-icon';
+    icon.style.background = 'rgba(239,68,68,0.18)';
+    icon.style.color = '#f87171';
+    num.style.display = 'none';
+    spin.style.display = 'none';
+    icon.innerHTML = '<i class="fas fa-times"></i>';
+    if (errMsg) text.textContent = errMsg;
+    if (csmTimers[`step${n}`]) { clearInterval(csmTimers[`step${n}`]); csmTimers[`step${n}`] = null; }
+  }
+
+  function csmShowAlert(msg, type='err') {
+    const el = document.getElementById("csmAlert");
+    el.className = `csm-alert show ${type}`;
+    el.innerHTML = (type === 'ok' ? '<i class="fas fa-check-circle"></i>' :
+                    type === 'info' ? '<i class="fas fa-info-circle"></i>' :
+                    '<i class="fas fa-exclamation-circle"></i>') + '<span>' + msg + '</span>';
+  }
+
+  function csmHideAlert() {
+    document.getElementById("csmAlert").className = 'csm-alert';
+  }
+
+  function csmSetButton(loading, htmlContent) {
+    const btn = document.getElementById("csmSubmit");
+    btn.disabled = loading;
+    btn.innerHTML = htmlContent;
+    document.getElementById("csmCancel").disabled = loading;
+    document.querySelectorAll('#csmForm .csm-input').forEach(i => i.disabled = loading);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // SUBMIT (fresh setup — save + connect)
+  // ══════════════════════════════════════════════════════════
+  async function csmSubmit() {
+    csmHideAlert();
+
+    const body = {
+      apiId:       document.getElementById("cm-apiid").value.trim(),
+      apiHash:     document.getElementById("cm-apihash").value.trim(),
+      botToken:    document.getElementById("cm-token").value.trim(),
+      dbChannelId: document.getElementById("cm-channel").value.trim(),
+      ownerId:     document.getElementById("cm-owner").value.trim(),
+    };
+
+    if (!body.apiId || !body.apiHash || !body.botToken || !body.dbChannelId || !body.ownerId) {
+      csmShowAlert("All fields are required to connect.");
+      return;
+    }
+    if (!/^\d+$/.test(body.apiId)) {
+      csmShowAlert("API ID must be numeric.");
+      return;
+    }
+    if (!body.botToken.includes(":")) {
+      csmShowAlert("Bot Token format looks invalid (should be like 123456:AAA...).");
+      return;
+    }
+
+    csmConnecting = true;
+    document.getElementById("csmProgress").classList.add("show");
+    csmSetButton(true, '<div class="csm-spin"></div><span>Connecting…</span>');
+    csmResetSteps();
+
+    // ── Step 1: Save credentials ──
+    csmStepStart(1);
+    try {
+      const saveRes = await fetch("/profile/update-telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const saveData = await saveRes.json();
+
+      if (!saveData.ok) {
+        csmStepFail(1, saveData.error || 'Save failed');
+        csmShowAlert(saveData.error || 'Failed to save credentials.');
+        csmConnecting = false;
+        csmSetButton(false, '<i class="fas fa-plug"></i><span>Try Again</span>');
+        return;
+      }
+      csmStepDone(1);
+    } catch (e) {
+      csmStepFail(1, 'Network error');
+      csmShowAlert('Network error while saving: ' + e.message);
+      csmConnecting = false;
+      csmSetButton(false, '<i class="fas fa-plug"></i><span>Try Again</span>');
+      return;
+    }
+
+    // ── Step 2: Connect Telegram ──
+    csmStepStart(2);
+    try {
+      const connRes = await fetch("/profile/connect-telegram", { method: "POST" });
+      const connData = await connRes.json();
+
+      if (connData.ok) {
+        csmStepDone(2);
+        csmShowAlert('Cloud storage connected successfully! Redirecting…', 'ok');
+        csmSetButton(true, '<i class="fas fa-check"></i><span>Connected</span>');
+        setTimeout(() => window.location.href = "/cloud", 1500);
+      } else {
+        csmStepFail(2, connData.error || 'Connection failed');
+        csmShowAlert(connData.error || 'Connection failed. Please verify your credentials.');
+        csmConnecting = false;
+        csmSetButton(false, '<i class="fas fa-redo"></i><span>Retry Connection</span>');
+      }
+    } catch (e) {
+      csmStepFail(2, 'Network error');
+      csmShowAlert('Network error during connection: ' + e.message);
+      csmConnecting = false;
+      csmSetButton(false, '<i class="fas fa-redo"></i><span>Retry Connection</span>');
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // RECONNECT ONLY (skip save — credentials already in DB)
+  // ══════════════════════════════════════════════════════════
+  async function csmReconnectOnly() {
+    csmHideAlert();
+    csmConnecting = true;
+    document.getElementById("csmProgress").classList.add("show");
+    csmSetButton(true, '<div class="csm-spin"></div><span>Connecting…</span>');
+    csmResetSteps();
+
+    // Step 1: already saved, mark done
+    csmStepDone(1);
+    document.getElementById('step1Text').textContent = 'Credentials loaded from database';
+
+    // Step 2: connect
+    csmStepStart(2);
+    try {
+      const connRes = await fetch("/profile/connect-telegram", { method: "POST" });
+      const connData = await connRes.json();
+
+      if (connData.ok) {
+        csmStepDone(2);
+        csmShowAlert('Cloud storage connected successfully! Redirecting…', 'ok');
+        csmSetButton(true, '<i class="fas fa-check"></i><span>Connected</span>');
+        setTimeout(() => window.location.href = "/cloud", 1500);
+      } else {
+        csmStepFail(2, connData.error || 'Connection failed');
+        csmShowAlert(connData.error || 'Connection failed. Check credentials in Profile settings.');
+        csmConnecting = false;
+        csmSetButton(false, '<i class="fas fa-redo"></i><span>Retry Connection</span>');
+      }
+    } catch (e) {
+      csmStepFail(2, 'Network error');
+      csmShowAlert('Network error during connection: ' + e.message);
+      csmConnecting = false;
+      csmSetButton(false, '<i class="fas fa-redo"></i><span>Retry Connection</span>');
+    }
+  }
+
+  // ESC to close (if not connecting)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !csmConnecting) {
+      const modal = document.getElementById('csmModal');
+      if (modal.classList.contains('open')) csmClose();
+    }
+  });
+  </script>
+</body>
+</html>

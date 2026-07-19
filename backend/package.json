@@ -1,0 +1,25 @@
+{
+  "name": "vinnoflow-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Vinnoflow backend — Express + MongoDB + Telegram",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "overrides": {
+    "form-data": "^4.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "bcrypt": "^6.0.0",
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "mongoose": "^8.24.1",
+    "multer": "^1.4.5-lts.1",
+    "node-telegram-bot-api": "^0.66.0",
+    "telegram": "^2.26.22"
+  }
+}

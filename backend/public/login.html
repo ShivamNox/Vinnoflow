@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign In — Vinnoflow</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="login-body">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon"><i class="fas fa-bolt"></i></div>
+        <div class="login-logo-name">Vinnoflow</div>
+        <div class="login-logo-sub">Vinnoshiv powered automation hub</div>
+      </div>
+
+      <div id="errBox"></div>
+
+      <form method="POST" action="/login">
+        <div class="login-group">
+          <label class="login-label">Email address</label>
+          <input
+            class="login-input"
+            type="email"
+            name="email"
+            placeholder="admin@example.com"
+            required
+            autofocus
+          />
+        </div>
+        <div class="login-group">
+          <label class="login-label">Password</label>
+          <input
+            class="login-input"
+            type="password"
+            name="password"
+            placeholder="••••••••"
+            required
+          />
+        </div>
+        <button type="submit" class="login-btn">
+          <i class="fas fa-sign-in-alt" style="margin-right: 6px"></i>Sign In
+        </button>
+      </form>
+
+      <div class="login-footer">Secure · Private · Powered by Vinnoshiv</div>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      if (params.get("error")) {
+        document.getElementById("errBox").innerHTML =
+          '<div class="login-err"><i class="fas fa-exclamation-circle"></i>Invalid email or password.</div>';
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="4" y1="2" x2="44" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#4338ca"/>
+    </linearGradient>
+    <linearGradient id="wire" x1="10" y1="14" x2="38" y2="34" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e0d9ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="48" height="48" rx="13" fill="url(#bg)"/>
+
+  <!-- Node-network mark: two source nodes flowing into one output node ("V" made of workflow nodes) -->
+  <path d="M13 15 L24 30 L35 15" stroke="url(#wire)" stroke-width="3.2"
+        stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <circle cx="13" cy="15" r="4" fill="url(#wire)"/>
+  <circle cx="35" cy="15" r="4" fill="url(#wire)"/>
+  <circle cx="24" cy="33" r="4.6" fill="#ffffff"/>
+</svg>

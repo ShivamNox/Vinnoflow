@@ -1,0 +1,351 @@
+========================================================================
+VINNOFLOW — PROJECT OVERVIEW (for AI-assisted feature development)
+========================================================================
+Purpose of this file: Give any AI/developer full context of this project's
+structure, tech stack, files, functions, imports/exports, features, and how
+everything connects — WITHOUT needing to re-explore the whole codebase.
+When asking an AI to add/change a feature, attach this file and tell it
+which section(s) are relevant, plus the exact backend/frontend files to
+open (paths are given below).
+
+========================================================================
+1. WHAT THIS PROJECT IS
+========================================================================
+Vinnoflow — a self-hosted "automation hub". v1.0 focuses on one module:
+"TG Cloud" — unlimited-storage cloud file manager built on top of Telegram
+(files are actually stored in a Telegram channel/chat; Telegram is used as
+the storage backend). Has a web dashboard (React) + Node/Express backend +
+MongoDB for metadata + a Telegram bot for uploading files via chat.
+Future planned modules (per README): bot templates, Zapier-like automation
+flows, AI agents — NOT built yet, only TG Cloud exists today.
+
+========================================================================
+2. TECH STACK
+========================================================================
+Backend:
+  - Node.js (ESM, "type": "module"), Express 4
+  - MongoDB + Mongoose (data: settings, folders, files, share links, bot config)
+  - express-session (cookie-based auth sessions)
+  - bcrypt (password hashing)
+  - multer (multipart file upload handling, disk storage)
+  - node-telegram-bot-api  → the interactive Telegram BOT (commands, /settings, polling)
+  - telegram (GramJS)      → MTProto CLIENT (logs in as the bot via botAuthToken) used
+                              for actual file upload/download/streaming to/from Telegram,
+                              because Bot API alone can't handle large files/streaming well.
+  - dotenv-style env handling via config/vars.js (env values also mirrored into MongoDB)
+
+Frontend:
+  - React 18 + Vite
+  - react-router-dom (client-side routing)
+  - Plain `fetch` / `XMLHttpRequest` for API calls (no axios), session-cookie auth
+  - No CSS framework — plain index.css
+  - Dev server on port 5173, proxies /api,/login,/logout,/setup,/profile,/cloud,
+    /stream,/download,/share to backend on port 3000 (see frontend/vite.config.js)
+  - In production, Express serves the built frontend/dist directly (see app.js)
+
+Root:
+  - npm workspaces-style but NOT a real pnpm/npm workspace — just a root
+    package.json with scripts that shell out to backend/ and frontend/:
+      postinstall → installs deps in both backend/ and frontend/
+      start       → node backend/index.js            (production / single-process)
+      dev         → concurrently: vite dev server + node backend/index.js
+      build       → builds frontend (vite build → frontend/dist)
+
+========================================================================
+3. FOLDER STRUCTURE
+========================================================================
+vinnoflow/
+├── backend/
+│   ├── index.js                  entry point — boots everything
+│   ├── app.js                    Express app instance, session, core routes
+│   ├── bot.js                    node-telegram-bot-api instance (singleton)
+│   ├── auth/
+│   │   └── auth.js               session auth middleware
+│   ├── config/
+│   │   ├── db.js                 Mongoose connect/isConnected
+│   │   └── vars.js               env var + DB-synced config (getConfig/writeEnvValues/refreshConfigFromDB)
+│   ├── features/
+│   │   ├── settings/
+│   │   │   ├── settingsRoutes.js         /setup/* and /profile/* routes
+│   │   │   └── Models/SettingsModel.js   Mongoose "Settings" schema (singleton doc)
+│   │   └── tgcloud/
+│   │       ├── tgbotcloud.js             Telegram BOT command logic (/start, /addf, /settings, file intake)
+│   │       ├── tgwebcloud.js             MTProto client + all /cloud, /stream, /download, /share HTTP routes
+│   │       └── Models/
+│   │           ├── BotModels.js          BOT (default folder), ActiveChannel (channel→folder map)
+│   │           └── FileModels.js         Folder, FolderFile, ShareLink schemas
+│   ├── public/                   static assets served for share pages etc.
+│   └── package.json
+├── frontend/
+│   ├── index.html
+│   ├── vite.config.js            dev proxy config (see §2)
+│   ├── src/
+│   │   ├── main.jsx               React root render
+│   │   ├── App.jsx                Router + ProtectedRoute/PublicRoute + route table
+│   │   ├── index.css              global styles
+│   │   ├── context/AuthContext.jsx   auth state (user, authenticated, setupComplete)
+│   │   ├── components/Layout.jsx     header + sidebar shell used by all protected pages
+│   │   └── pages/
+│   │       ├── Login.jsx          /login
+│   │       ├── Setup.jsx          /setup — first-run wizard (DB → admin → profile, 3 steps)
+│   │       ├── Dashboard.jsx      / — module hub/landing page
+│   │       ├── Profile.jsx        /profile — admin + Telegram credentials management
+│   │       ├── Cloud.jsx          /cloud — root folder listing
+│   │       └── CloudFolder.jsx    /cloud/folder/* — folder contents, upload, share, stream, delete
+│   └── package.json
+├── package.json                  root scripts (start/dev/build/postinstall)
+└── README.md
+
+========================================================================
+4. BACKEND — FILE BY FILE (imports / exports / functions / routes)
+========================================================================
+
+--- backend/index.js ---
+Entry point. Boot sequence (function `boot()`):
+  1. Mounts settingsRoutes at /setup and /profile
+  2. Connects MongoDB via config/db.js if MONGO_URI present
+  3. refreshConfigFromDB() to sync DB-stored config into memory
+  4. Loads tgwebcloud.js → initRoutes() (registers all /cloud,/stream,/download,/share routes)
+  5. If Telegram creds present: initClient() (MTProto) then reinitBot() (bot polling) +
+     registerBotHandlers() (tgbotcloud.js command handlers)
+  6. addCatchAll() (from app.js) — serves React SPA for all non-API paths
+  7. app.listen(PORT)
+IMPORTS: config/db.js, config/vars.js, app.js (app, addCatchAll), then dynamic
+  imports of settingsRoutes.js, tgwebcloud.js, bot.js, tgbotcloud.js.
+
+--- backend/app.js ---
+Creates and configures the core Express `app`: JSON/urlencoded body parsers,
+static serving of frontend/dist and backend/public, express-session config
+(cookie: httpOnly, 7-day maxAge, secret from SESSION_SECRET env/config).
+EXPORTS: `app` (default), `markSetupComplete()`, `checkSetupStatus()`,
+  `requireAuth` (session-based middleware, unused directly — auth/auth.js is
+  the one actually wired into routes), `addCatchAll()`.
+ROUTES DEFINED HERE:
+  GET  /api/me              → current session user (displayName/email/avatarUrl)
+  GET  /api/setup/status    → { dbConnected, setupComplete }
+  POST /login               → checks Settings.admin (DB) OR EMAIL/PASSWORD env fallback
+  GET  /logout              → destroys session
+
+--- backend/bot.js ---
+Singleton wrapper around `node-telegram-bot-api`. Ensures old polling instance
+is stopped before creating a new one (prevents duplicate polling / 409 conflicts
+IF called correctly — see known issue note in §6).
+EXPORTS: default `botProxy` (Proxy that forwards method calls to the live
+  bot instance, throws if not initialized yet), `reinitBot()`, `getBot()`.
+
+--- backend/config/db.js ---
+Mongoose connection helper.
+EXPORTS: `connectDB(uri)` → { ok, error? }, `isConnected()`.
+
+--- backend/config/vars.js ---
+Central config layer: merges process.env with values persisted in MongoDB
+(so setup wizard writes credentials to DB + .env-equivalent storage).
+EXPORTS: `getConfig()` (returns current merged config object: MONGO_URI,
+  API_ID, API_HASH, BOT_TOKEN, TG_SESSION, EMAIL, PASSWORD, SESSION_SECRET,
+  PORT, etc.), `refreshConfigFromDB()`, `writeEnvValues(obj)` (persists to
+  .env-like store), `getBotToken()`.
+
+--- backend/auth/auth.js ---
+EXPORTS: default `authMiddleware(req,res,next)` — 401s unless
+  `req.session.auth === true`. Used to protect /profile/update and other
+  authenticated routes.
+
+--- backend/features/settings/Models/SettingsModel.js ---
+Mongoose model `Settings` (one singleton document holds all app config):
+  setupComplete: Bool
+  admin: { email, passwordHash, displayName, avatarUrl }
+  telegram: { apiId, apiHash, botToken, dbChannelId, ownerId, session, connected }
+
+--- backend/features/settings/settingsRoutes.js ---
+Express Router mounted at both /setup and /profile.
+Helper fns: getSettings() (find-or-create Settings doc), isSetupComplete(),
+  autoInitTelegram() (calls tgwebcloud.initClient() + bot.js reinitBot() +
+  tgbotcloud.registerBotHandlers() — this is what actually starts Telegram
+  connections when config already exists in DB, i.e. auto-restore on reboot).
+ROUTES:
+  POST /setup/connect-db        → save+connect MONGO_URI; if setup already
+                                   complete in DB, auto-restores full session
+                                   (marks setup complete, calls autoInitTelegram(),
+                                   logs the user in)
+  POST /setup/save-credentials  → create admin email/password (blocked once setup done)
+  POST /setup/save-profile      → save displayName/avatar, marks setupComplete=true,
+                                   calls autoInitTelegram(), logs user in
+  POST /profile/update          [auth] → update displayName/email
+  POST /profile/change-password [auth] → update password
+  POST /profile/update-telegram [auth] → save API_ID/API_HASH/BOT_TOKEN
+  POST /profile/connect-telegram[auth] → (re)initClient + reinitBot with new creds
+  GET  /profile/settings-data   [auth] → returns current settings for the Profile page
+
+--- backend/features/tgcloud/Models/BotModels.js ---
+  BOT: { folderId }                          — default upload folder for bot
+  ActiveChannel: { channelId (unique), folderId } — maps a Telegram channel to a folder,
+      used for multi-channel routing (channel posts land in matching folder)
+
+--- backend/features/tgcloud/Models/FileModels.js ---
+  Folder: { name, folderId (unique), parentId, channelId }
+  FolderFile: { folderId, filename, fileId, messageId, channelId, uniqueId (unique),
+                size, thumbId }
+  ShareLink: { token (unique), uniqueId, fileId, filename, size }
+
+--- backend/features/tgcloud/tgbotcloud.js ---
+The interactive Telegram BOT's command/message handlers (built on the
+`node-telegram-bot-api` instance from bot.js via `getBot()`).
+IMPORTS: getBot (bot.js), Folder/FolderFile (FileModels), BOT/ActiveChannel
+  (BotModels), getConfig (config/vars.js).
+Helpers: fmtBytes(), sanitize(), extractFileInfo(msg) (pulls filename/fileId/
+  size from document/video/audio/photo message types), file batching via
+  `fileBatches` Map + BATCH_WAIT (3s) — groups multiple files sent together
+  into one save operation.
+KEY FEATURE: registerBotHandlers() — wires up bot commands: /start, /addf
+  (register folder), /settings (inline-keyboard based settings menu — added
+  in a previous round, replacing old text-command flow), plus generic
+  message handler that intercepts document/video/audio/photo uploads sent
+  to the bot or to a mapped channel and saves them into the matching Folder
+  as FolderFile records. Multi-channel support: incoming channel posts are
+  routed to whichever Folder is mapped via ActiveChannel.channelId.
+
+--- backend/features/tgcloud/tgwebcloud.js ---
+Owns the MTProto client (GramJS `TelegramClient`) AND all cloud HTTP routes.
+IMPORTS: telegram (TelegramClient, Api), telegram/sessions (StringSession),
+  telegram/client/uploads (CustomFile), multer, authMiddleware, Folder/
+  FolderFile/ShareLink (FileModels), getConfig/refreshConfigFromDB/
+  writeEnvValues (config/vars.js).
+In-memory state: `senders` Map, `metaCache` Map, `chunkCache` (LRU-ish cache
+  for streamed file chunks, 2min TTL, max 50 entries), `_client` (singleton
+  MTProto client instance).
+KEY FUNCTIONS:
+  initClient()   → creates/starts the GramJS TelegramClient using
+                    botAuthToken (logs in AS the bot via MTProto, not a user
+                    account), reuses/saves session string to DB+env so it
+                    doesn't need to re-auth every boot. No-ops if already
+                    connected. Skips if API_ID/API_HASH/BOT_TOKEN missing.
+  reinitClient() → disconnects + re-runs initClient() (used after credential
+                    changes from Profile page)
+  getClient()    → returns current MTProto client instance
+  initRoutes()   → registers all Express routes below (multer disk-storage
+                    upload middleware configured here — supports MULTIPLE
+                    files per request, backward compatible with single-file)
+ROUTES (mounted from initRoutes(), most require session auth):
+  GET  /api/cloud/folders              → list root-level folders
+  GET  /api/cloud/folder-data/*        → list a folder's subfolders + files
+  POST /cloud/upload                   → multi-file upload; streams progress
+                                          via Server-Sent-Events-style chunked
+                                          response (server-received % and
+                                          Telegram-upload %) — uses `senders`
+                                          map to track per-upload GramJS sender
+  GET  /stream/:uniqueId               → range-request video/audio streaming,
+                                          reads chunks from Telegram via
+                                          chunkCache/CHUNK(1MB)/PREFETCH(15)
+  GET  /download/:filename             → full file download from Telegram
+  POST /cloud/share                    → creates a ShareLink (token) for a file
+  GET  /share/:token                   → public (no-auth) share landing page
+  GET  /share/stream/:token            → public (no-auth) stream via share token
+
+========================================================================
+5. FRONTEND — FILE BY FILE
+========================================================================
+All API calls use plain `fetch`/`XMLHttpRequest` with `credentials: 'include'`
+(session cookie auth) against relative paths (/api/..., /cloud/..., etc.),
+proxied to backend:3000 in dev via vite.config.js, same-origin in production.
+
+  main.jsx            — ReactDOM root, renders <App/>
+  App.jsx             — BrowserRouter + route table:
+                           /login          → Login (PublicRoute)
+                           /setup          → Setup (PublicRoute, multi-step)
+                           /               → Dashboard (ProtectedRoute)
+                           /profile        → Profile (ProtectedRoute)
+                           /cloud          → Cloud (ProtectedRoute)
+                           /cloud/folder/* → CloudFolder (ProtectedRoute)
+                         ProtectedRoute/PublicRoute check AuthContext's
+                         `authenticated`/`setupComplete` state and redirect.
+  context/AuthContext.jsx — `AuthProvider`/`useAuth()`; fetches /api/me and
+                         /api/setup/status on mount; exposes user, authenticated,
+                         setupComplete, loading, login/logout helpers.
+  components/Layout.jsx — shared header+sidebar shell (nav: Dashboard, TG
+                         Cloud, Profile) wrapping all protected pages.
+  pages/Login.jsx      — email/password form → POST /login
+  pages/Setup.jsx      — 3-step first-run wizard: (1) MongoDB URI →
+                         POST /setup/connect-db, (2) admin email/password →
+                         POST /setup/save-credentials, (3) display name/avatar
+                         → POST /setup/save-profile
+  pages/Dashboard.jsx  — static module-hub landing (currently only TG Cloud
+                         module is "live"; others are placeholders for future
+                         features per README)
+  pages/Profile.jsx    — displayName/avatar update, password change, Telegram
+                         API_ID/API_HASH/BOT_TOKEN management → calls
+                         /profile/update, /profile/change-password,
+                         /profile/update-telegram, /profile/connect-telegram,
+                         reads /profile/settings-data
+  pages/Cloud.jsx      — lists root folders (GET /api/cloud/folders), create/
+                         rename/delete folder modals, shows Telegram connection
+                         status (tgStatus)
+  pages/CloudFolder.jsx— folder contents (GET /api/cloud/folder-data/*),
+                         drag/select multi-file upload via XHR to POST
+                         /cloud/upload (tracks two progress bars: srvPct =
+                         browser→server, tgPct = server→Telegram), stream
+                         (/stream/:id), download (/download/:filename), share
+                         link generation (POST /cloud/share), delete, move
+                         between folders.
+
+========================================================================
+6. HOW EVERYTHING CONNECTS (data/feature flow)
+========================================================================
+- First run: no DB configured → Setup.jsx wizard walks user through
+  connect-db → save-credentials → save-profile. Last step marks setup
+  complete in DB + calls autoInitTelegram() which starts BOTH Telegram
+  connections (MTProto client for file I/O + bot polling for commands).
+- Subsequent runs: index.js boot() reads config; if Telegram creds already
+  known at boot time it starts them directly; if not yet loaded (e.g. env
+  missing but DB has them), the frontend's initial `/setup/connect-db` call
+  triggers the "existing setup detected — auto-restoring" path, which is
+  what actually calls autoInitTelegram() in that scenario.
+- File upload (web UI): CloudFolder.jsx → POST /cloud/upload (multer saves
+  to disk temporarily) → tgwebcloud.js reads temp file → GramJS `_client`
+  uploads it into Telegram (bot's own chat/channel) → FolderFile record
+  saved in MongoDB (fileId/messageId/uniqueId) → temp file deleted.
+- File upload (via Telegram bot directly): user sends a file to the bot (or
+  posts in a mapped channel) → tgbotcloud.js message handler → extractFileInfo()
+  → looks up target Folder via BOT.folderId or ActiveChannel mapping →
+  creates FolderFile record. NOTE: bot.js uses Bot API for receiving/sending
+  messages; tgwebcloud.js's GramJS client is used for the heavier lifting
+  (large file streaming/download) — both point at the SAME underlying bot
+  account (one uses Bot API token directly, the other logs the bot in via
+  MTProto using that same token as botAuthToken).
+- Streaming/download/share: tgwebcloud.js routes fetch the file from
+  Telegram via the GramJS client (chunked, cached in chunkCache) and pipe it
+  to the browser — this is why large files/video seeking work despite
+  Telegram Bot API's normal file-size limits.
+- Auth: express-session cookie set on /login or during Setup's final step;
+  authMiddleware (auth/auth.js) protects /profile/* and most /cloud/*,
+  /stream, /download routes; ProtectedRoute (frontend) blocks page access
+  client-side, backed by real server-side 401s.
+
+========================================================================
+7. KNOWN OPERATIONAL NOTES (useful context, not code bugs)
+========================================================================
+- Telegram bot polling uses node-telegram-bot-api; MTProto file I/O uses
+  gramjs (`telegram` package) — this is intentional, NOT duplicate libraries
+  for the same job. Do not "simplify" to one library without understanding
+  both are required for different capabilities (bot commands vs large-file
+  MTProto access).
+- A `409 Conflict: terminated by other getUpdates request` error means the
+  SAME bot token is being polled from two places at once (e.g. this app
+  running in two environments simultaneously) — not a code bug by itself,
+  but be careful not to introduce a code path that calls reinitBot()/
+  initClient() twice concurrently (bot.js's reinitBot() does stop the old
+  poller first, but only if called sequentially — concurrent calls could race).
+- Repeated GramJS "Not connected"/ECONNABORTED reconnect churn is commonly
+  caused by the host device/OS suspending background network (e.g. mobile
+  device battery optimization killing a background terminal's sockets), not
+  a bug in tgwebcloud.js.
+
+========================================================================
+8. HOW TO USE THIS FILE WITH ANOTHER AI
+========================================================================
+When requesting a new feature/change from another AI, give it:
+  1. This overview.txt (full context)
+  2. The exact file(s) from the tree above that are relevant to the change
+  3. A precise description of the desired behavior
+Example: "Add a 'rename share link' feature — read overview.txt sections 4
+and 5, then modify backend/features/tgcloud/tgwebcloud.js (ShareLink route)
+and frontend/src/pages/CloudFolder.jsx (share modal)."
