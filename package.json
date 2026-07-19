@@ -4,8 +4,7 @@
   "private": true,
   "description": "Vinnoflow — Telegram-powered cloud storage automation hub",
   "scripts": {
-    "postinstall": "npm install --prefix backend && npm install --prefix frontend",
-    "build": "npm run build --prefix frontend",
+    "build": "npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend",
     "start": "node backend/index.js",
     "dev": "npx concurrently \"npm run dev --prefix frontend\" \"node backend/index.js\""
   },
