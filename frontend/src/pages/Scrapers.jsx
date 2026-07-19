@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Layout from '../components/Layout';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import Layout from "../components/Layout";
 
 export default function Scrapers() {
     const navigate = useNavigate();
@@ -13,84 +13,99 @@ export default function Scrapers() {
 
     const fetchScrapers = async () => {
         try {
-            const res = await fetch('/api/scrapers/status', {
-                credentials: 'include'
+            const res = await fetch("/api/scrapers/status", {
+                credentials: "include",
             });
             const data = await res.json();
             setScrapers(data.scrapers || []);
         } catch (error) {
-            console.error('Failed to fetch scrapers:', error);
+            console.error("Failed to fetch scrapers:", error);
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) return <Layout><div>Loading...</div></Layout>;
+    const hdhub = scrapers.find((s) => s.name === "hdhub4u");
+
+    if (loading) {
+        return (
+            <Layout>
+                <div className="es">
+                    <i className="fas fa-spinner fa-spin"></i>
+                    Loading scrapers...
+                </div>
+            </Layout>
+        );
+    }
 
     return (
         <Layout>
-            <div style={{ padding: '20px' }}>
-                <h1>Scrapers</h1>
-                <p>Manage your content scrapers</p>
+            <div className="ph">
+                <div>
+                    <div className="pt">Scrapers</div>
+                    <div className="ps">
+                        Manage your content scrapers and automation tools
+                    </div>
+                </div>
+            </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', marginTop: '30px' }}>
-                    {/* HDHub4u Card */}
+            <div className="cards-grid">
+                {/* HDHub4u Card */}
+                <div
+                    className="card"
+                    onClick={() => navigate("/scrapers/hdhub4u")}
+                >
+                    <div className="card-icon">
+                        <i className="fas fa-film"></i>
+                    </div>
+                    <div className="card-title">HDHub4u Scraper</div>
+                    <div className="card-desc">
+                        Automatically scrape movies and series from HDHub4u
+                    </div>
                     <div
-                        onClick={() => navigate('/scrapers/hdhub4u')}
                         style={{
-                            border: '1px solid #ddd',
-                            borderRadius: '8px',
-                            padding: '20px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            backgroundColor: '#fff'
-                        }}
-                        onMouseOver={(e) => {
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                        }}
-                        onMouseOut={(e) => {
-                            e.currentTarget.style.boxShadow = 'none';
-                            e.currentTarget.style.transform = 'translateY(0)';
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
                         }}
                     >
-                        <h2 style={{ margin: '0 0 10px 0' }}>HDHub4u Scraper</h2>
-                        <p style={{ color: '#666', margin: '0 0 15px 0' }}>
-                            Automatically scrape movies and series from HDHub4u
-                        </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{
-                                padding: '4px 12px',
-                                borderRadius: '12px',
-                                fontSize: '12px',
-                                fontWeight: '500',
-                                backgroundColor: scrapers.find(s => s.name === 'hdhub4u')?.enabled ? '#d4edda' : '#f8d7da',
-                                color: scrapers.find(s => s.name === 'hdhub4u')?.enabled ? '#155724' : '#721c24'
-                            }}>
-                                {scrapers.find(s => s.name === 'hdhub4u')?.enabled ? 'Active' : 'Inactive'}
+                        <span
+                            className={`card-tag ${hdhub?.enabled ? "active" : "soon"}`}
+                        >
+                            <i
+                                className="fas fa-circle"
+                                style={{ fontSize: "6px" }}
+                            ></i>
+                            {hdhub?.enabled ? "Active" : "Inactive"}
+                        </span>
+                        {hdhub?.isRunning && (
+                            <span className="card-tag blue">
+                                <i
+                                    className="fas fa-sync fa-spin"
+                                    style={{ fontSize: "8px" }}
+                                ></i>
+                                Running
                             </span>
-                            {scrapers.find(s => s.name === 'hdhub4u')?.isRunning && (
-                                <span style={{ fontSize: '12px', color: '#666' }}>🔄 Running...</span>
-                            )}
-                        </div>
+                        )}
                     </div>
+                </div>
 
-                    {/* Placeholder for future scrapers */}
-                    <div style={{
-                        border: '1px dashed #ddd',
-                        borderRadius: '8px',
-                        padding: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minHeight: '150px',
-                        color: '#999'
-                    }}>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '48px', marginBottom: '10px' }}>+</div>
-                            <div>More scrapers coming soon</div>
-                        </div>
+                {/* Placeholder for future scrapers */}
+                <div className="card soon">
+                    <div className="card-icon amber">
+                        <i className="fas fa-plus"></i>
                     </div>
+                    <div className="card-title">More Scrapers</div>
+                    <div className="card-desc">
+                        Additional scraper modules coming soon
+                    </div>
+                    <span className="card-tag soon">
+                        <i
+                            className="fas fa-clock"
+                            style={{ fontSize: "8px" }}
+                        ></i>
+                        Coming Soon
+                    </span>
                 </div>
             </div>
         </Layout>
